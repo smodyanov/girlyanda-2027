@@ -98,7 +98,7 @@ h1{font-size:2.2rem;margin-bottom:5px;color:#ffd166;text-shadow:0 0 15px rgba(25
 
 <script>
 var SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTfp0jmMKiuE_XFKHdUrxG1N7USmCxr4B5B7nAFdAHF7H0FK6K-mixB0tr59PvaSrJ2q8oAH9KhwxsF/pub?gid=6257065&single=true&output=csv";
-var CACHE_KEY = "garland_data_v1";
+var CACHE_KEY = "garland_data_v2"; // Обновил версию кэша, чтобы сбросить старые данные!
 
 function parseCSV(text) {
   var rows = [], row = [], cell = "", inQuotes = false;
@@ -188,8 +188,12 @@ function draw(data) {
   var bg = document.getElementById("bg-garland");
   var grid = document.getElementById("team-grid");
 
+  // ПОЛНАЯ ОЧИСТКА ПЕРЕД ОТРИСОВКОЙ
   bg.innerHTML = "";
-  sceneInner.querySelectorAll(".tree-bulb").forEach(function(n){ n.remove(); });
+  var oldTreeBulbs = sceneInner.querySelectorAll(".tree-bulb");
+  for (var i = 0; i < oldTreeBulbs.length; i++) {
+    oldTreeBulbs[i].remove();
+  }
   grid.innerHTML = "";
   resetHighlight();
 
@@ -200,17 +204,14 @@ function draw(data) {
   document.getElementById("total-bulbs").innerText = totalBulbs;
 
   /* --- ОТРИСОВКА СЕТКИ И ЁЛКИ --- */
-  // Если огоньков больше 0, рисуем.
   if (totalBulbs > 0) {
     
-    // 1. Собираем все огоньки
     var allBulbs = [];
     data.forEach(function(m){
       for (var i = 0; i < m.bulbs; i++) allBulbs.push({ name: m.name, color: m.color });
     });
     allBulbs.sort(function(){ return Math.random() - 0.5; });
 
-    // 2. Рисуем сетку
     var H_WIRES = 20;
     var PADDING = 2;
     var SAG = 2.0;
@@ -274,7 +275,6 @@ function draw(data) {
       }
     }
 
-    // 3. Рисуем крупные лампочки на ёлке
     var ranked = data.slice().sort(function(a,b){ return b.bulbs - a.bulbs; });
     var tiers;
     if (ranked.length <= 3) tiers = [ranked.slice(0,3)];
@@ -291,8 +291,8 @@ function draw(data) {
       var yr = tierY[tierIdx] || tierY[2];
       group.forEach(function(m, i) {
         
-        // ГЛАВНОЕ УСЛОВИЕ: Рисуем лампочку на ёлке только если у участника > 0 огоньков!
-        if (m.bulbs === 0) return;
+        // СТРОГОЕ УСЛОВИЕ: Если 0 огоньков, лампочка не создается!
+        if (m.bulbs <= 0) return;
 
         var t = group.length === 1 ? 0.5 : i / (group.length - 1);
         var y = yr.min + t * (yr.max - yr.min);
@@ -322,7 +322,6 @@ function draw(data) {
     });
   }
 
-  /* --- Карточки (рисуются всегда) --- */
   var ranked = data.slice().sort(function(a,b){ return b.bulbs - a.bulbs; });
   ranked.forEach(function (m) {
     var card = document.createElement("div");
