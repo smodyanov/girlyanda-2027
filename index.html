@@ -98,7 +98,7 @@ h1{font-size:2.2rem;margin-bottom:5px;color:#ffd166;text-shadow:0 0 15px rgba(25
 
 <script>
 var SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTfp0jmMKiuE_XFKHdUrxG1N7USmCxr4B5B7nAFdAHF7H0FK6K-mixB0tr59PvaSrJ2q8oAH9KhwxsF/pub?gid=6257065&single=true&output=csv";
-var CACHE_KEY = "garland_data_v2"; // Обновил версию кэша, чтобы сбросить старые данные!
+var CACHE_KEY = "garland_data_v4"; // Обновляем кэш
 
 function parseCSV(text) {
   var rows = [], row = [], cell = "", inQuotes = false;
@@ -188,12 +188,9 @@ function draw(data) {
   var bg = document.getElementById("bg-garland");
   var grid = document.getElementById("team-grid");
 
-  // ПОЛНАЯ ОЧИСТКА ПЕРЕД ОТРИСОВКОЙ
   bg.innerHTML = "";
   var oldTreeBulbs = sceneInner.querySelectorAll(".tree-bulb");
-  for (var i = 0; i < oldTreeBulbs.length; i++) {
-    oldTreeBulbs[i].remove();
-  }
+  for (var i = 0; i < oldTreeBulbs.length; i++) { oldTreeBulbs[i].remove(); }
   grid.innerHTML = "";
   resetHighlight();
 
@@ -203,14 +200,26 @@ function draw(data) {
   data.forEach(function(m){ totalBulbs += m.bulbs; });
   document.getElementById("total-bulbs").innerText = totalBulbs;
 
-  /* --- ОТРИСОВКА СЕТКИ И ЁЛКИ --- */
-  if (totalBulbs > 0) {
+  // Считаем, сколько огоньков должно быть на сетке (у всех, кроме первого)
+  var garlandBulbsCount = 0;
+  data.forEach(function(m) {
+    if (m.bulbs > 1) garlandBulbsCount += (m.bulbs - 1);
+  });
+
+  /* --- ОТРИСОВКА СЕТКИ --- */
+  // Сетка рисуется, только если есть "вторые" и последующие огоньки
+  if (garlandBulbsCount > 0) {
     
-    var allBulbs = [];
+    var allBulbsForGarland = [];
     data.forEach(function(m){
-      for (var i = 0; i < m.bulbs; i++) allBulbs.push({ name: m.name, color: m.color });
+      // Добавляем на сетку только огоньки со 2-го и далее
+      if (m.bulbs > 1) {
+        for (var j = 1; j < m.bulbs; j++) {
+          allBulbsForGarland.push({ name: m.name, color: m.color });
+        }
+      }
     });
-    allBulbs.sort(function(){ return Math.random() - 0.5; });
+    allBulbsForGarland.sort(function(){ return Math.random() - 0.5; });
 
     var H_WIRES = 20;
     var PADDING = 2;
@@ -221,10 +230,8 @@ function draw(data) {
     wireSvg.setAttribute("viewBox", "0 0 100 100");
     wireSvg.setAttribute("preserveAspectRatio", "none");
     wireSvg.style.position = "absolute";
-    wireSvg.style.top = "0";
-    wireSvg.style.left = "0";
-    wireSvg.style.width = "100%";
-    wireSvg.style.height = "100%";
+    wireSvg.style.top = "0"; wireSvg.style.left = "0";
+    wireSvg.style.width = "100%"; wireSvg.style.height = "100%";
     wireSvg.style.overflow = "visible";
     bg.appendChild(wireSvg);
 
@@ -243,16 +250,16 @@ function draw(data) {
       wireSvg.appendChild(p);
     }
 
-    var perWire = Math.ceil(allBulbs.length / H_WIRES);
+    var perWire = Math.ceil(allBulbsForGarland.length / H_WIRES);
     var bulbIdx = 0;
 
     for (var w = 0; w < H_WIRES; w++) {
       var wire = wires[w];
-      var countHere = Math.min(perWire, allBulbs.length - bulbIdx);
+      var countHere = Math.min(perWire, allBulbsForGarland.length - bulbIdx);
       if (countHere <= 0) break;
 
       for (var k = 0; k < countHere; k++) {
-        var b = allBulbs[bulbIdx++];
+        var b = allBulbsForGarland[bulbIdx++];
         var t = (k + 0.5) / countHere;
         var x = PADDING + t * (100 - 2 * PADDING);
         var sagOffset = wire.sag * 4 * t * (1 - t);
@@ -261,8 +268,7 @@ function draw(data) {
         var dot = document.createElement("div");
         dot.className = "mini-bulb";
         dot.dataset.owner = b.name;
-        dot.style.left = x + "%";
-        dot.style.top = y + "%";
+        dot.style.left = x + "%"; dot.style.top = y + "%";
         dot.style.backgroundColor = b.color;
         dot.style.boxShadow = "0 0 10px " + b.color + ", 0 0 20px " + b.color;
         
@@ -270,59 +276,57 @@ function draw(data) {
           dot.style.animation = "twinkle " + (1.5 + Math.random() * 1.5) + "s infinite alternate";
           dot.style.animationDelay = (Math.random() * 2) + "s";
         }
-        dot.title = b.name + " • огонёк";
         bg.appendChild(dot);
       }
     }
-
-    var ranked = data.slice().sort(function(a,b){ return b.bulbs - a.bulbs; });
-    var tiers;
-    if (ranked.length <= 3) tiers = [ranked.slice(0,3)];
-    else if (ranked.length <= 7) tiers = [ranked.slice(0,3), ranked.slice(3)];
-    else tiers = [ranked.slice(0,3), ranked.slice(3,7), ranked.slice(7)];
-
-    var tierY = [{min:15,max:33},{min:38,max:57},{min:62,max:84}];
-    function halfWidthAt(y) { return Math.max(0.5, (y - 8) * 0.42); }
-    var maxB = 1;
-    data.forEach(function(d){ if (d.bulbs > maxB) maxB = d.bulbs; });
-
-    tiers.forEach(function(group, tierIdx) {
-      if (!group.length) return;
-      var yr = tierY[tierIdx] || tierY[2];
-      group.forEach(function(m, i) {
-        
-        // СТРОГОЕ УСЛОВИЕ: Если 0 огоньков, лампочка не создается!
-        if (m.bulbs <= 0) return;
-
-        var t = group.length === 1 ? 0.5 : i / (group.length - 1);
-        var y = yr.min + t * (yr.max - yr.min);
-        var hw = halfWidthAt(y);
-        var inner = hw * 0.85;
-        var x;
-        if (group.length === 1) x = 50;
-        else x = 50 - inner + (i / (group.length - 1)) * (inner * 2);
-        
-        var ratio = maxB > 0 ? m.bulbs / maxB : 0;
-        var size = 14 + ratio * 12;
-        
-        var el = document.createElement("div");
-        el.className = "tree-bulb";
-        el.dataset.owner = m.name;
-        el.style.left = x + "%";
-        el.style.top = y + "%";
-        el.style.width = size + "px";
-        el.style.height = size + "px";
-        el.style.background = m.color;
-        el.style.boxShadow = "0 0 15px " + m.color + ", 0 0 30px " + m.color;
-        el.title = m.name + " • " + m.bulbs + " огоньков";
-        el.style.animationDelay = (Math.random() * 2) + "s";
-        el.addEventListener("click", function(){ highlightMember(m.name, findCard(m.name)); });
-        sceneInner.appendChild(el);
-      });
-    });
   }
 
+  /* --- ОТРИСОВКА ЁЛКИ --- */
   var ranked = data.slice().sort(function(a,b){ return b.bulbs - a.bulbs; });
+  var tiers;
+  if (ranked.length <= 3) tiers = [ranked.slice(0,3)];
+  else if (ranked.length <= 7) tiers = [ranked.slice(0,3), ranked.slice(3)];
+  else tiers = [ranked.slice(0,3), ranked.slice(3,7), ranked.slice(7)];
+
+  var tierY = [{min:15,max:33},{min:38,max:57},{min:62,max:84}];
+  function halfWidthAt(y) { return Math.max(0.5, (y - 8) * 0.42); }
+  var maxB = 1;
+  data.forEach(function(d){ if (d.bulbs > maxB) maxB = d.bulbs; });
+
+  tiers.forEach(function(group, tierIdx) {
+    if (!group.length) return;
+    var yr = tierY[tierIdx] || tierY[2];
+    group.forEach(function(m, i) {
+      
+      // ЛАМПОЧКА НА ЁЛКЕ: появляется, если есть хотя бы 1 огонёк
+      if (m.bulbs < 1) return;
+
+      var t = group.length === 1 ? 0.5 : i / (group.length - 1);
+      var y = yr.min + t * (yr.max - yr.min);
+      var hw = halfWidthAt(y);
+      var inner = hw * 0.85;
+      var x;
+      if (group.length === 1) x = 50;
+      else x = 50 - inner + (i / (group.length - 1)) * (inner * 2);
+      
+      var ratio = maxB > 0 ? m.bulbs / maxB : 0;
+      var size = 14 + ratio * 12;
+      
+      var el = document.createElement("div");
+      el.className = "tree-bulb";
+      el.dataset.owner = m.name;
+      el.style.left = x + "%"; el.style.top = y + "%";
+      el.style.width = size + "px"; el.style.height = size + "px";
+      el.style.background = m.color;
+      el.style.boxShadow = "0 0 15px " + m.color + ", 0 0 30px " + m.color;
+      el.title = m.name + " • " + m.bulbs + " огоньков";
+      el.style.animationDelay = (Math.random() * 2) + "s";
+      el.addEventListener("click", function(){ highlightMember(m.name, findCard(m.name)); });
+      sceneInner.appendChild(el);
+    });
+  });
+
+  /* --- КАРТОЧКИ --- */
   ranked.forEach(function (m) {
     var card = document.createElement("div");
     card.className = "member-card";
@@ -344,8 +348,7 @@ function draw(data) {
     grid.appendChild(card);
   });
 
-  document.getElementById("last-update").innerText =
-    "Обновлено: " + new Date().toLocaleTimeString("ru-RU");
+  document.getElementById("last-update").innerText = "Обновлено: " + new Date().toLocaleTimeString("ru-RU");
 }
 
 function findCard(name) {
@@ -407,28 +410,16 @@ async function loadAndRender() {
 }
 
 var refreshTimer = null;
-function startAutoRefresh() {
-  if (refreshTimer) return;
-  refreshTimer = setInterval(loadAndRender, 10 * 60 * 1000);
-}
-function stopAutoRefresh() {
-  if (refreshTimer) {
-    clearInterval(refreshTimer);
-    refreshTimer = null;
-  }
-}
+function startAutoRefresh() { if (!refreshTimer) refreshTimer = setInterval(loadAndRender, 600000); }
+function stopAutoRefresh() { if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; } }
 
 document.getElementById("reset-filter").addEventListener("click", resetHighlight);
 loadAndRender();
 startAutoRefresh();
 
 document.addEventListener("visibilitychange", function () {
-  if (document.hidden) {
-    stopAutoRefresh();
-  } else {
-    loadAndRender();
-    startAutoRefresh();
-  }
+  if (document.hidden) stopAutoRefresh();
+  else { loadAndRender(); startAutoRefresh(); }
 });
 </script>
 </body>
