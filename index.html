@@ -59,7 +59,8 @@ h1{font-size:2.2rem;margin-bottom:5px;color:#ffd166;text-shadow:0 0 15px rgba(25
 <body>
 <div class="container">
 <h1>🎄 Зажигаем гирлянду 2027</h1>
-<p class="subtitle">Новогодний марафон полезных привычек • 1 – 27 декабря 2026</p>
+<!-- Обновленная дата здесь: -->
+<p class="subtitle">Новогодний марафон полезных привычек • 30 ноября – 27 декабря 2026</p>
 <div id="loading">✨ Зажигаем огоньки...</div>
 
 <div class="tree-section">
@@ -98,7 +99,7 @@ h1{font-size:2.2rem;margin-bottom:5px;color:#ffd166;text-shadow:0 0 15px rgba(25
 
 <script>
 var SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTfp0jmMKiuE_XFKHdUrxG1N7USmCxr4B5B7nAFdAHF7H0FK6K-mixB0tr59PvaSrJ2q8oAH9KhwxsF/pub?gid=6257065&single=true&output=csv";
-var CACHE_KEY = "garland_data_v5"; // Обновляем кэш
+var CACHE_KEY = "garland_data_v5"; // Версия кэша
 
 function parseCSV(text) {
   var rows = [], row = [], cell = "", inQuotes = false;
@@ -331,7 +332,6 @@ function draw(data) {
   }
 
   /* --- КАРТОЧКИ --- */
-  // Рисуем карточки ТОЛЬКО для activeData (у кого > 0 огоньков)
   ranked.forEach(function (m) {
     var card = document.createElement("div");
     card.className = "member-card";
